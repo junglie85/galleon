@@ -1,0 +1,15 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "galleon_win32",
+            "type": "cppvsdbg",
+            "request": "launch",
+            "program": "${workspaceFolder}/target/debug/galleon_win32.exe",
+            "environment": [],
+            "cwd": "${workspaceFolder}",
+            "console": "newExternalWindow",
+            "preLaunchTask": "build galleon_win32"
+        }
+    ]
+}
