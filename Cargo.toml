@@ -10,9 +10,14 @@ edition = "2021"
 [workspace.dependencies]
 core = { version = "*", path = "./core" }
 
+log = "0.4.20"
+
 [workspace.dependencies.windows-sys]
 version = "0.52.0"
 features = ["Win32_System_Diagnostics_Debug"]
+
+# [workspace.dev-dependencies]
+# serial_test = "2.0.0"
 
 # [profile.dev]
 # opt-level = 1
