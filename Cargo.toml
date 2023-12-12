@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "win32"]
+members = ["common", "win32"]
 
 [workspace.package]
 version = "0.0.1"
@@ -8,16 +8,14 @@ license-file = "LICENSE"
 edition = "2021"
 
 [workspace.dependencies]
-core = { version = "*", path = "./core" }
+common = { version = "*", path = "./common" }
 
-log = "0.4.20"
+tracing = "0.1.40"
+tracing-subscriber = "0.3.18"
 
 [workspace.dependencies.windows-sys]
 version = "0.52.0"
 features = ["Win32_System_Diagnostics_Debug"]
-
-# [workspace.dev-dependencies]
-# serial_test = "2.0.0"
 
 # [profile.dev]
 # opt-level = 1

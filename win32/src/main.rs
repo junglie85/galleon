@@ -4,8 +4,9 @@
 #[cfg(all(not(target_os = "windows")))]
 compile_error!("only windows is supported");
 
-use core::logger::{self, info, LevelFilter, Sink};
+use common::logger::{self, Sink};
 use std::sync::{Arc, Mutex};
+use tracing::{error, info, info_span, level_filters::LevelFilter, Level};
 
 use windows_sys::Win32::System::Diagnostics::Debug::OutputDebugStringW;
 
@@ -18,8 +19,8 @@ macro_rules! wstr {
 }
 
 fn main() {
-    let log_sink = DebugConsoleSink::new(LevelFilter::Debug);
-    if let Err(err) = logger::startup(LevelFilter::Debug) {
+    let log_sink = DebugConsoleSink::new(LevelFilter::TRACE);
+    if let Err(err) = logger::startup(LevelFilter::TRACE) {
         let msg = wstr!("{err}\n");
         log_sink.output_debug_string(&msg);
         return;
@@ -27,14 +28,25 @@ fn main() {
 
     logger::add_sink(&log_sink);
 
-    let greeting = wstr!("{}\n", core::greet("shipmate"));
+    let greeting = wstr!("{}\n", common::greet("shipmate"));
     log_sink.output_debug_string(&greeting);
 
-    info!("Test message 1");
+    let outer_span = info_span!("outer", level = 0);
+    let _outer_entered = outer_span.enter();
 
-    logger::remove_sink(&log_sink);
+    let inner_span = info_span!("inner", level = 1);
+    let _inner_entered = inner_span.enter();
 
-    info!("Test message 2");
+    info!(milk = 3, "Test message 1");
+
+    logger::set_max_level(LevelFilter::ERROR);
+    log_sink.set_max_level(LevelFilter::INFO);
+
+    info!(cheese = 7, "Test message 2");
+
+    // logger::remove_sink(&log_sink);
+
+    error!("Test message 3");
 
     logger::shutdown();
 }
@@ -51,28 +63,43 @@ impl DebugConsoleSink {
         }
     }
 
+    fn set_max_level(&self, level: LevelFilter) {
+        *self.max_level.lock().unwrap() = level;
+    }
+
     fn output_debug_string(&self, s: &[u16]) {
         unsafe { OutputDebugStringW(s.as_ptr()) };
     }
 }
 
 impl Sink for DebugConsoleSink {
-    fn enabled(&self, metadata: &core::logger::Metadata) -> bool {
-        metadata.level().to_level_filter() <= *self.max_level.lock().unwrap()
+    fn enabled(&self, level: &Level) -> bool {
+        matches!(self.max_level.lock().unwrap().into_level(), Some(ref max_level) if level <= max_level)
     }
 
-    fn log(&self, record: &core::logger::Record) {
-        let msg = wstr!(
-            "{} {} {:?} {:?}\n",
-            record.level(),
-            record.args(),
-            record.file(),
-            record.line()
-        );
-        self.output_debug_string(&msg);
+    fn log(
+        &self,
+        level: &Level,
+        msg: &str,
+        args: Option<&str>,
+        file: Option<&str>,
+        line: Option<u32>,
+    ) {
+        let temp = match (args, file, line) {
+            (Some(args), Some(file), Some(line)) => {
+                wstr!("[{}][{}:{}] {} {}\n", level, file, line, msg, args)
+            }
+            (None, Some(file), Some(line)) => {
+                wstr!("[{}][{}:{}] {}\n", level, file, line, msg)
+            }
+            (Some(args), None, None) => wstr!("[{}][unknown:unknown] {} {}\n", level, msg, args),
+            _ => wstr!("[{}][unknown:unknown] {}\n", level, msg),
+        };
+
+        self.output_debug_string(&temp);
     }
 
     fn flush(&self) {
-        // Nothing to do.
+        // Nothing to do here.
     }
 }
